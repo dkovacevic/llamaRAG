@@ -4,7 +4,7 @@ from langchain.chains import RetrievalQA
 
 from vector import retriever
 
-model = OllamaLLM(model="llama3.2")
+model = OllamaLLM(model="gemma3")
 
 # 2) Build a RetrievalQA chain that uses “stuff” (i.e., “concat all documents and feed them together”)
 qa_chain = RetrievalQA.from_chain_type(
@@ -15,9 +15,27 @@ qa_chain = RetrievalQA.from_chain_type(
 )
 
 template = """
-You are a senior software engineer. I want you to help junior colleagues to better understand our documentation
-Here are some relevant confluence pages.
-Here is the question to answer: What is LexoRank?
+You are a helpful technical assistant for a software company. You answer questions using only the provided Confluence documentation snippets. 
+
+Below are several excerpts from the company's Confluence wiki pages. These may include documentation, architectural diagrams, how-to guides, onboarding notes, release notes, or process manuals. Use these excerpts as your only source of truth.
+
+When answering, always:
+- Base your answer solely on the retrieved Confluence content. If you can't find a direct answer, say so clearly.
+- Provide concise, clear, and professional responses suitable for engineers or business users.
+- If multiple relevant snippets are found, synthesize the answer from all, citing the snippet(s) when appropriate.
+- Never make up information that is not present in the provided snippets.
+
+----
+Question:
+{question}
+
+----
+Relevant Confluence wiki snippets:
+{context}
+
+----
+Answer:
+
 """
 prompt = ChatPromptTemplate.from_template(template)
 chain = prompt | model
@@ -34,7 +52,7 @@ while True:
     #   • automatically concatenate their .page_content,
     #   • insert that text into a default prompt template,
     #   • and call the LLM.
-    output = qa_chain({"query": question})
+    output = qa_chain.invoke({"query": question})
 
     # output["result"] is the LLM’s answer
     # output["source_documents"] is a list of the actual Document objects used
