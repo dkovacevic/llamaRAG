@@ -7,7 +7,10 @@ import os
 from confluence import fetch_confluence_pages
 from confluence import extract_text_from_storage
 
-embeddings = OllamaEmbeddings(model="mxbai-embed-large")
+DOCS_TO_RETURN = 5  # Number of documents to return per query
+EMBEDDING_MODEL = "mxbai-embed-large"  # Ollama embedding model
+
+embeddings = OllamaEmbeddings(model=EMBEDDING_MODEL)
 
 db_location = "./chrome_langchain_db"
 add_documents = not os.path.exists(db_location)
@@ -71,5 +74,5 @@ if add_documents:
     vector_store.add_documents(documents=documents, ids=ids)
 
 retriever = vector_store.as_retriever(
-    search_kwargs={"k": 4}
+    search_kwargs={"k": DOCS_TO_RETURN}
 )

@@ -1,6 +1,7 @@
 langchain
 langchain-ollama
 langchain-chroma
+langchain-community
 beautifulsoup4
 requests
 bs4
