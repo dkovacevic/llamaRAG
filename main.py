@@ -2,7 +2,8 @@ from langchain_ollama.llms import OllamaLLM
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains import RetrievalQA
 
-from vector import retriever
+#from vector import retriever
+from repoRAG import retriever
 
 model = OllamaLLM(model="gemma3")
 

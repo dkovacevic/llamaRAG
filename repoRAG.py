@@ -7,17 +7,21 @@ import bs4
 from pathlib import Path
 from langchain import hub
 from langchain_core.documents import Document
+from langchain_ollama import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from typing_extensions import List, TypedDict
 
 # LangChain components
 from langchain.vectorstores import Chroma
 from langchain.chains import RetrievalQA
+from langchain.llms.ollama import Ollama
+from langchain.chains.question_answering import load_qa_chain
+
 
 # -----------------------------------------------------------------------------
 # Configuration
 # -----------------------------------------------------------------------------
-REPO_URL = "https://github.com/dkovacevic/holdem.git"
+REPO_URL = "https://github.com/malckal/vizsgaevkonyv.git"
 LOCAL_PATH = "repo"
 CHROMA_DIR = "chroma_db"
 
@@ -60,7 +64,7 @@ if not documents:
 # -----------------------------------------------------------------------------
 # 3. Split Documents into Chunks
 # -----------------------------------------------------------------------------
-splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=0)
+splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=200)
 chunked_docs: List[Document] = []
 for doc in documents:
     splits = splitter.split_documents([doc])
@@ -72,7 +76,14 @@ metadatas = [d.metadata for d in chunked_docs]
 # -----------------------------------------------------------------------------
 # 4. Embeddings and Chroma Ingestion via hub
 # -----------------------------------------------------------------------------
-embeddings = hub.load("ollama", "embeddings", model="mxbai-embed-large")
+config = {
+    "type":"ollama",
+    "component":"embeddings",
+    "model":"mxbai-embed-large"
+}
+config_str = json.dumps(config)
+
+embeddings = OllamaEmbeddings(model="mxbai-embed-large")
 vector_store = Chroma.from_texts(
     texts,
     embeddings,
@@ -84,49 +95,62 @@ vector_store.persist()
 # -----------------------------------------------------------------------------
 # 5. Setup RetrievalQA with Ollama LLM
 # -----------------------------------------------------------------------------
-llm = hub.load("ollama", "model", model="mxbai-7b")
+config = {
+    "type":"ollama",
+    "component":"model",
+    "model":"llama3"
+}
+config_str = json.dumps(config)
+
+
+llm = Ollama(model="llama3")
+combine_docs_chain = load_qa_chain(llm)
 retriever = vector_store.as_retriever()
 qa_chain = RetrievalQA(
-    combine_documents_chain=None,  # use default chain
+    combine_documents_chain=combine_docs_chain,  # use default chain
     retriever=retriever,
-    llm=llm
 )
 
 # -----------------------------------------------------------------------------
 # 6. Analysis Prompt Definition
 # -----------------------------------------------------------------------------
 analysis_prompt = (
-    "You are an assistant analyzing Java code snippets. "
-    "Identify all HTTP calls to external services. "
+    "You are an assistant analyzing Spring Boot code snippets. "
+    "You need to identify every database table used in the code."
+    "The best way to look for annotations like @Table or @Entity."
+    "Also include the columns of these tables. These usually are properties marked with @Column or @Id"
+    "Only take the directory ending with '-rest' in consideration."
     "Output strictly valid JSON with this schema:\n"
     "{\n"
-    "  \"services\": {\n"
-    "    \"<service-name>\": {\n"
-    "      \"calls\": [\n"
+    "  \"Entities\": {\n"
+    "    \"<table-name>\": {\n"
+    "      \"columns\": [\n"
     "        {\n"
-    "          \"targetService\": \"<target-service>\",\n"
-    "          \"endpoint\": \"<endpoint-pattern>\",\n"
-    "          \"callSites\": [\"<file>:<line>\"]\n"
+    "          \"column name\": \"<column-name>\",\n"
+    "          \"data type\": \"<data-type>\",\n"
     "        }\n"
     "      ]\n"
     "    }\n"
     "  }\n"
     "}\n"
+    "\n"
+    "Also print all the file names you use for your analysis"
 )
 
 # -----------------------------------------------------------------------------
 # 7. Run Analysis and Save Report
 # -----------------------------------------------------------------------------
 print("Running analysis...")
-result = qa_chain.run(analysis_prompt)
+for i in range(3):
+    result = qa_chain.run(analysis_prompt)
 
-try:
-    report = json.loads(result)
-    with open("inter_service_report.json", "w", encoding="utf-8") as f:
-        json.dump(report, f, indent=2)
-    print("Report written to inter_service_report.json")
-except json.JSONDecodeError:
-    print("Failed to parse JSON from model output.\nOutput was:\n", result)
+    try:
+        report = json.loads(result)
+        with open("inter_service_report.json", "w", encoding="utf-8") as f:
+            json.dump(report, f, indent=2)
+        print("Report written to inter_service_report.json")
+    except json.JSONDecodeError:
+        print("Failed to parse JSON from model output.\nOutput was:\n", result)
 
 # -----------------------------------------------------------------------------
 # 8. Basic Unit Tests for Splitter
