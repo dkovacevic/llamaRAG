@@ -64,7 +64,7 @@ if not documents:
 # -----------------------------------------------------------------------------
 # 3. Split Documents into Chunks
 # -----------------------------------------------------------------------------
-splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=0)
+splitter = RecursiveCharacterTextSplitter(chunk_size=2000, chunk_overlap=200)
 chunked_docs: List[Document] = []
 for doc in documents:
     splits = splitter.split_documents([doc])
@@ -117,9 +117,9 @@ qa_chain = RetrievalQA(
 analysis_prompt = (
     "You are an assistant analyzing Spring Boot code snippets. "
     "You need to identify every database table used in the code."
-    "Also include the columns of these tables. These are usually marked with @Column or @Id"
-    "Only take the directory ending with '-rest' in consideration."
     "The best way to look for annotations like @Table or @Entity."
+    "Also include the columns of these tables. These usually are properties marked with @Column or @Id"
+    "Only take the directory ending with '-rest' in consideration."
     "Output strictly valid JSON with this schema:\n"
     "{\n"
     "  \"Entities\": {\n"
